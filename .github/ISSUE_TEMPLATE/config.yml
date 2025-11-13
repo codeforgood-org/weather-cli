@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/codeforgood-org/weather-cli/blob/main/README.md
+    about: Please check the documentation before opening an issue
+  - name: Examples
+    url: https://github.com/codeforgood-org/weather-cli/tree/main/examples
+    about: Check out example scripts demonstrating various use cases

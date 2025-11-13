@@ -7,6 +7,7 @@ from typing import Optional, List
 from . import __version__
 from .config import Config
 from .weather import WeatherClient
+from .formatter import WeatherFormatter
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -41,6 +42,19 @@ def create_parser() -> argparse.ArgumentParser:
         help="Temperature units (default: metric/Celsius)"
     )
 
+    parser.add_argument(
+        "--format",
+        choices=["rich", "plain", "json"],
+        default="rich",
+        help="Output format (default: rich/colored)"
+    )
+
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output (same as --format plain)"
+    )
+
     return parser
 
 
@@ -60,6 +74,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Combine city name parts
     city = " ".join(args.city)
 
+    # Determine output format
+    output_format = "plain" if args.no_color else args.format
+    formatter = WeatherFormatter()
+
     # Initialize configuration
     config = Config()
     if args.units:
@@ -67,22 +85,27 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Validate configuration
     if not config.validate():
-        print(
-            "Error: OPENWEATHER_API_KEY environment variable is not set.",
-            file=sys.stderr
-        )
-        print(
-            "\nPlease set your API key:",
-            file=sys.stderr
-        )
-        print(
-            "  export OPENWEATHER_API_KEY='your_api_key_here'",
-            file=sys.stderr
-        )
-        print(
-            "\nGet your free API key at: https://openweathermap.org/api",
-            file=sys.stderr
-        )
+        if output_format == "rich":
+            formatter.print_error("OPENWEATHER_API_KEY environment variable is not set.")
+            formatter.print_info("Please set your API key: export OPENWEATHER_API_KEY='your_api_key_here'")
+            formatter.print_info("Get your free API key at: https://openweathermap.org/api")
+        else:
+            print(
+                "Error: OPENWEATHER_API_KEY environment variable is not set.",
+                file=sys.stderr
+            )
+            print(
+                "\nPlease set your API key:",
+                file=sys.stderr
+            )
+            print(
+                "  export OPENWEATHER_API_KEY='your_api_key_here'",
+                file=sys.stderr
+            )
+            print(
+                "\nGet your free API key at: https://openweathermap.org/api",
+                file=sys.stderr
+            )
         return 1
 
     # Fetch and display weather
@@ -90,18 +113,32 @@ def main(argv: Optional[List[str]] = None) -> int:
         with WeatherClient(config) as client:
             weather = client.get_weather(city)
             if weather:
-                print(weather)
+                if output_format == "json":
+                    print(formatter.format_json(weather))
+                elif output_format == "plain":
+                    print(formatter.format_plain(weather))
+                else:  # rich
+                    formatter.format_rich(weather)
                 return 0
             else:
-                print("Failed to fetch weather data.", file=sys.stderr)
+                if output_format == "rich":
+                    formatter.print_error("Failed to fetch weather data.")
+                else:
+                    print("Failed to fetch weather data.", file=sys.stderr)
                 return 1
 
     except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        if output_format == "rich":
+            formatter.print_error(str(e))
+        else:
+            print(f"Error: {e}", file=sys.stderr)
         return 1
 
     except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+        if output_format == "rich":
+            formatter.print_error(f"Unexpected error: {e}")
+        else:
+            print(f"Unexpected error: {e}", file=sys.stderr)
         return 1
 
 

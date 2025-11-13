@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  weather-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: weather-cli:latest
+    container_name: weather-cli
+    environment:
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - WEATHER_UNITS=${WEATHER_UNITS:-metric}
+    # Override default command to get weather for a city
+    # Usage: docker-compose run weather-cli London
+    command: ["London"]
+    # If you want to run interactively
+    stdin_open: true
+    tty: true
+
+  # Example service for running multiple cities
+  weather-multi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: weather-cli:latest
+    environment:
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - WEATHER_UNITS=${WEATHER_UNITS:-metric}
+    volumes:
+      - ./examples:/app/examples:ro
+    command: ["python", "/app/examples/basic_usage.py"]
+    profiles:
+      - examples
+
+  # Development service with volume mounting
+  weather-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: weather-cli:latest
+    environment:
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - WEATHER_UNITS=${WEATHER_UNITS:-metric}
+    volumes:
+      - .:/app:rw
+    command: ["--help"]
+    profiles:
+      - dev
